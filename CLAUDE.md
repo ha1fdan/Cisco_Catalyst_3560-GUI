@@ -99,8 +99,12 @@ scripts you leave lying around, and definitely don't commit them.
 Useful pattern for headless verification (no real display needed):
 
 ```
-QT_QPA_PLATFORM=offscreen python3 your_test_script.py
+QT_QPA_PLATFORM=offscreen uv run python3 your_test_script.py
 ```
+
+Dependencies are managed with uv (`pyproject.toml` + `uv.lock`), not pip/venv
+directly -- `uv sync` to install, `uv run python ...` to execute anything
+inside the project's environment.
 
 `QWidget.grab()` renders correctly even under the offscreen platform, so
 `window.grab().save("out.png")` is a reliable way to visually check GUI

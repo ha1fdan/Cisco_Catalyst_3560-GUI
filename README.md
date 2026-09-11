@@ -51,20 +51,18 @@ so the GUI never drifts out of sync with what's actually on the switch.
 
 ## Requirements
 
-- Python 3.10+
+- [uv](https://docs.astral.sh/uv/)
 - A Catalyst 3560 (or close IOS relative) reachable over Telnet, or a
   USB-to-serial console cable
 
 ```
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 ## Running it
 
 ```
-python3 main.py
+uv run python main.py
 ```
 
 You'll get a connection dialog on launch - pick Telnet or Serial, enter the
