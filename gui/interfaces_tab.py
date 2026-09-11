@@ -53,6 +53,7 @@ class InterfacesTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._svis: list[SviInfo] = []
+        self._columns_sized = False
 
         layout = QVBoxLayout(self)
 
@@ -103,7 +104,9 @@ class InterfacesTab(QWidget):
             values = [s.name, str(s.vlan_id), s.ip_address or "unassigned", s.subnet_mask, status]
             for col, value in enumerate(values):
                 self.table.setItem(row, col, QTableWidgetItem(value))
-        self.table.resizeColumnsToContents()
+        if not self._columns_sized and svis:
+            self.table.resizeColumnsToContents()
+            self._columns_sized = True
 
     def update_gateway(self, gateway: str) -> None:
         if not self.gateway_edit.hasFocus():

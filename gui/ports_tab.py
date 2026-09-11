@@ -94,6 +94,7 @@ class PortsTab(QWidget):
         super().__init__(parent)
         self._ports: list[PortInfo] = []
         self._vlans: list[VlanInfo] = []
+        self._columns_sized = False
 
         layout = QVBoxLayout(self)
         btn_row = QHBoxLayout()
@@ -125,7 +126,9 @@ class PortsTab(QWidget):
             ]
             for col, value in enumerate(values):
                 self.table.setItem(row, col, QTableWidgetItem(value))
-        self.table.resizeColumnsToContents()
+        if not self._columns_sized and ports:
+            self.table.resizeColumnsToContents()
+            self._columns_sized = True
 
     def update_vlans(self, vlans: list[VlanInfo]) -> None:
         self._vlans = vlans

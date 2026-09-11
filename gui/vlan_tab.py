@@ -50,6 +50,7 @@ class VlanTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._vlans: list[VlanInfo] = []
+        self._columns_sized = False
 
         layout = QVBoxLayout(self)
 
@@ -82,7 +83,12 @@ class VlanTab(QWidget):
             self.table.setItem(row, 1, QTableWidgetItem(v.name))
             self.table.setItem(row, 2, QTableWidgetItem(v.status))
             self.table.setItem(row, 3, QTableWidgetItem(", ".join(v.ports)))
-        self.table.resizeColumnsToContents()
+        # Only auto-size columns once, on first population. Doing this on
+        # every refresh snaps column widths back regardless of any manual
+        # resize the user just did -- felt like the whole UI "jumping".
+        if not self._columns_sized and vlans:
+            self.table.resizeColumnsToContents()
+            self._columns_sized = True
 
     def _selected_vlan(self) -> VlanInfo | None:
         rows = self.table.selectionModel().selectedRows()

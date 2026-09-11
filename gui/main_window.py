@@ -112,6 +112,12 @@ class MainWindow(QMainWindow):
 
         self.busy_label = QLabel("")
         self.busy_label.setStyleSheet("color: #f59e0b; font-weight: 600; padding-left: 10px;")
+        # Reserve space for the widest possible text up front so the toolbar
+        # doesn't reflow every time this text appears/disappears (which
+        # happens on every refresh) -- that reflow was the toolbar-level
+        # cause of the "UI jumps around" symptom.
+        width = self.busy_label.fontMetrics().horizontalAdvance("Working…") + 10
+        self.busy_label.setMinimumWidth(width)
         toolbar.addWidget(self.busy_label)
 
     def _on_autorefresh_toggled(self, checked: bool) -> None:

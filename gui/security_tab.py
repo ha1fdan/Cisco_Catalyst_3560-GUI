@@ -58,6 +58,7 @@ class SecurityTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._users: list[UserAccount] = []
+        self._columns_sized = False
         layout = QVBoxLayout(self)
 
         identity_group = QGroupBox("Identity")
@@ -160,7 +161,9 @@ class SecurityTab(QWidget):
         for row, u in enumerate(users):
             self.users_table.setItem(row, 0, QTableWidgetItem(u.username))
             self.users_table.setItem(row, 1, QTableWidgetItem(str(u.privilege)))
-        self.users_table.resizeColumnsToContents()
+        if not self._columns_sized and users:
+            self.users_table.resizeColumnsToContents()
+            self._columns_sized = True
 
     # ------------------------------------------------------------------
     def _on_apply_secret(self) -> None:
