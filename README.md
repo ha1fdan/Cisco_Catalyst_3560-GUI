@@ -59,6 +59,73 @@ so the GUI never drifts out of sync with what's actually on the switch.
 uv sync
 ```
 
+## Setting up a factory-fresh switch
+
+The GUI drives an existing config over Telnet or serial - it can't bring a
+switch onto the network for the first time, since that needs an IP address
+and a password to already exist. If you're starting from a switch with no
+config (or an unknown password inherited from wherever you got it), do
+this once via console cable first:
+
+1. **Find the console adapter** and connect at 9600 baud, 8N1:
+   ```
+   dmesg | grep -i tty          # confirms the port, usually /dev/ttyUSB0
+   sudo usermod -aG uucp $USER  # if you get a permissions error (relog after)
+   picocom -b 9600 /dev/ttyUSB0
+   ```
+
+2. **Unknown password?** Power off, hold the switch's `Mode` button, power
+   back on, keep holding until the SYST LED goes solid green. At the
+   `switch:` boot-loader prompt:
+   ```
+   flash_init
+   rename flash:config.text flash:config.text.old
+   boot
+   ```
+   Answer "no" to the setup dialog, then `enable` gets you into privileged
+   mode with no password. Merge the old config back in if you want to keep
+   it (`rename flash:config.text.old flash:config.text` then
+   `copy flash:config.text running-config`), or skip that and configure it
+   clean from here.
+
+3. **Minimum config so the GUI can reach it:**
+   ```
+   enable
+   configure terminal
+   hostname SW01
+   enable secret YOUR_PASSWORD
+   line con 0
+    password YOUR_PASSWORD
+    login
+   line vty 0 4
+    password YOUR_PASSWORD
+    login
+   line vty 5 15
+    password YOUR_PASSWORD
+    login
+   interface vlan 1
+    ip address 192.168.50.1 255.255.255.0
+    no shutdown
+   ip http server
+   end
+   copy running-config startup-config
+   ```
+
+4. **Give your Linux machine an IP on that subnet** so it can actually
+   reach the switch. Plug into any access port, then:
+   ```
+   ip -br addr                                  # find your interface name
+   sudo ip addr add 192.168.50.2/24 dev <iface>
+   ping 192.168.50.1
+   ```
+   That address is temporary - gone on reboot or unplug, which is fine for
+   a one-off setup session. Make it persistent with your distro's network
+   manager (`nmcli`, `netplan`, etc.) if you want it to survive a reboot.
+
+5. Launch the GUI and connect over Telnet to `192.168.50.1` - everything
+   past this point (VLANs, ports, further IP config) is easier through the
+   GUI than the CLI.
+
 ## Running it
 
 ```
