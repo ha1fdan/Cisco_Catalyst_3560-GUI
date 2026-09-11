@@ -28,13 +28,26 @@ so the GUI never drifts out of sync with what's actually on the switch.
 
 ## Screenshots
 
-| Dashboard | VLANs | Ports |
-|---|---|---|
-| ![Dashboard](screenshots/dashboard.png) | ![VLANs](screenshots/vlans.png) | ![Ports](screenshots/ports.png) |
+**Dashboard**
+![Dashboard](screenshots/dashboard.png)
 
-| Interfaces / IP | Security / Users | Terminal |
-|---|---|---|
-| ![Interfaces](screenshots/interfaces.png) | ![Security / Users](screenshots/users.png) | ![Terminal](screenshots/terminal.png) |
+**VLANs**
+![VLANs](screenshots/vlans.png)
+
+**Ports**
+![Ports](screenshots/ports.png)
+
+**Interfaces / IP**
+![Interfaces](screenshots/interfaces.png)
+
+**Security / Users**
+![Security / Users](screenshots/users.png)
+
+**Terminal**
+![Terminal](screenshots/terminal.png)
+
+**Connection dialog — saved devices**
+![Saved devices](screenshots/profiles.png)
 
 ## Requirements
 
