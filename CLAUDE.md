@@ -53,9 +53,19 @@ GUI code outside that wiring.
 - `core/worker.py` — `DeviceWorker(QObject)`, lives on a `QThread`, owns the
   `SwitchDevice`, exposes every action as a `@Slot` and every result as a
   `Signal`.
+- `core/profiles.py` — load/save of saved device connections to
+  `~/.config/cisco3560-gui/devices.json` (`$XDG_CONFIG_HOME` if set). Plain
+  functions (`load_profiles`, `save_profiles`, `upsert_profile`,
+  `delete_profile`), no Qt dependency, synchronous — this is small/local
+  disk I/O, not worth routing through the worker thread. Includes
+  credentials in plaintext by deliberate user choice; file gets chmod'd
+  `0600` after every write. Never write a test/profile file into the real
+  `$HOME/.config` — point `$XDG_CONFIG_HOME` at a scratch dir first.
 - `gui/*_tab.py` — one file per tab. Each tab only knows about its own
   `Signal`s (requests) and `update_*()` methods (results) — it never talks
   to `core/` directly.
+- `gui/connection_dialog.py` — the one exception to "GUI never talks to
+  core/ directly": it calls `core/profiles.py` synchronously (see above).
 - `gui/main_window.py` — the only file that wires tabs to the worker.
 
 ## Interface naming gotcha

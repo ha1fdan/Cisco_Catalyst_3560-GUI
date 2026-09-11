@@ -4,10 +4,12 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QDialogButtonBox, QFormLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QRadioButton, QSpinBox, QStackedWidget,
-    QVBoxLayout,
+    QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
+    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QMessageBox, QPushButton, QRadioButton, QSpinBox, QStackedWidget, QVBoxLayout,
 )
+
+from core.profiles import DeviceProfile, delete_profile, load_profiles, upsert_profile
 
 try:
     from serial.tools import list_ports
@@ -29,15 +31,40 @@ class ConnectionParams:
 
 
 class ConnectionDialog(QDialog):
-    """Startup dialog asking how to reach the switch."""
+    """Startup dialog: pick a saved device, or configure a new connection."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Connect to Switch")
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(440)
         self._result_params: ConnectionParams | None = None
+        self._profiles: list[DeviceProfile] = load_profiles()
 
         layout = QVBoxLayout(self)
+
+        # --- Saved devices ---
+        self.saved_group = QGroupBox("Saved Devices")
+        saved_layout = QVBoxLayout(self.saved_group)
+        self.saved_list = QListWidget()
+        self.saved_list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.saved_list.itemDoubleClicked.connect(lambda _item: self._connect_selected())
+        saved_layout.addWidget(self.saved_list)
+
+        saved_btn_row = QHBoxLayout()
+        connect_saved_btn = QPushButton("Connect to Selected")
+        connect_saved_btn.clicked.connect(self._connect_selected)
+        delete_saved_btn = QPushButton("Delete Selected")
+        delete_saved_btn.clicked.connect(self._delete_selected)
+        saved_btn_row.addWidget(connect_saved_btn)
+        saved_btn_row.addWidget(delete_saved_btn)
+        saved_btn_row.addStretch()
+        saved_layout.addLayout(saved_btn_row)
+        layout.addWidget(self.saved_group)
+        self._populate_saved_list()
+
+        # --- New connection ---
+        new_group = QGroupBox("New Connection")
+        new_layout = QVBoxLayout(new_group)
 
         mode_row = QHBoxLayout()
         self.radio_telnet = QRadioButton("Telnet")
@@ -46,10 +73,10 @@ class ConnectionDialog(QDialog):
         mode_row.addWidget(self.radio_telnet)
         mode_row.addWidget(self.radio_serial)
         mode_row.addStretch()
-        layout.addLayout(mode_row)
+        new_layout.addLayout(mode_row)
 
         self.stack = QStackedWidget()
-        layout.addWidget(self.stack)
+        new_layout.addWidget(self.stack)
 
         # --- Telnet page ---
         telnet_page = QGroupBox("Telnet")
@@ -95,14 +122,27 @@ class ConnectionDialog(QDialog):
         self.secret_edit.setEchoMode(QLineEdit.EchoMode.Password)
         cred_form.addRow("Line password:", self.password_edit)
         cred_form.addRow("Enable secret:", self.secret_edit)
-        layout.addWidget(cred_group)
+        new_layout.addWidget(cred_group)
 
         hint = QLabel(
             "Line password logs into user EXEC mode (con/vty).\n"
             "Enable secret is used to reach privileged EXEC mode."
         )
         hint.setStyleSheet("color: gray; font-size: 11px;")
-        layout.addWidget(hint)
+        new_layout.addWidget(hint)
+
+        # --- Save-as-profile ---
+        save_row = QHBoxLayout()
+        self.save_check = QCheckBox("Save this device for next time")
+        self.save_check.toggled.connect(self._on_save_toggled)
+        self.save_name_edit = QLineEdit()
+        self.save_name_edit.setPlaceholderText("Device name (e.g. SW02 - Lab)")
+        self.save_name_edit.setEnabled(False)
+        save_row.addWidget(self.save_check)
+        save_row.addWidget(self.save_name_edit, 1)
+        new_layout.addLayout(save_row)
+
+        layout.addWidget(new_group)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -111,6 +151,56 @@ class ConnectionDialog(QDialog):
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    # ------------------------------------------------------------------
+    def _populate_saved_list(self) -> None:
+        self.saved_list.clear()
+        for profile in self._profiles:
+            item = QListWidgetItem(profile.summary())
+            item.setData(Qt.ItemDataRole.UserRole, profile.name)
+            self.saved_list.addItem(item)
+        self.saved_group.setVisible(bool(self._profiles))
+
+    def _selected_profile(self) -> DeviceProfile | None:
+        items = self.saved_list.selectedItems()
+        if not items:
+            return None
+        name = items[0].data(Qt.ItemDataRole.UserRole)
+        return next((p for p in self._profiles if p.name == name), None)
+
+    def _connect_selected(self) -> None:
+        profile = self._selected_profile()
+        if profile is None:
+            QMessageBox.information(self, "No selection", "Select a saved device first.")
+            return
+        self._result_params = ConnectionParams(
+            mode=profile.mode,
+            host=profile.host,
+            port=profile.port,
+            serial_port=profile.serial_port,
+            baudrate=profile.baudrate,
+            password=profile.password,
+            secret=profile.secret,
+        )
+        self.accept()
+
+    def _delete_selected(self) -> None:
+        profile = self._selected_profile()
+        if profile is None:
+            QMessageBox.information(self, "No selection", "Select a saved device first.")
+            return
+        confirm = QMessageBox.question(self, "Delete device", f"Delete saved device '{profile.name}'?")
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+        self._profiles = delete_profile(profile.name)
+        self._populate_saved_list()
+
+    def _on_save_toggled(self, checked: bool) -> None:
+        self.save_name_edit.setEnabled(checked)
+        if checked and not self.save_name_edit.text().strip():
+            default = self.host_edit.text().strip() if self.radio_telnet.isChecked() \
+                else self.serial_combo.currentText().strip()
+            self.save_name_edit.setText(default)
 
     def _refresh_serial_ports(self) -> None:
         current = self.serial_combo.currentText()
@@ -141,6 +231,23 @@ class ConnectionDialog(QDialog):
                 password=self.password_edit.text(),
                 secret=self.secret_edit.text(),
             )
+
+        if self.save_check.isChecked():
+            name = self.save_name_edit.text().strip()
+            if not name:
+                QMessageBox.warning(self, "Missing name", "Enter a name to save this device as.")
+                return
+            upsert_profile(DeviceProfile(
+                name=name,
+                mode=self._result_params.mode,
+                host=self._result_params.host,
+                port=self._result_params.port,
+                serial_port=self._result_params.serial_port,
+                baudrate=self._result_params.baudrate,
+                password=self._result_params.password,
+                secret=self._result_params.secret,
+            ))
+
         self.accept()
 
     def result_params(self) -> ConnectionParams | None:

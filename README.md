@@ -20,9 +20,21 @@ on this thing — IOS 12.2(46)SE on the IP Base image doesn't have one.
 - **Security / Users** — hostname, enable secret, console/VTY line
   passwords, local user accounts, HTTP server toggle
 - **Terminal** — raw CLI passthrough for anything the other tabs don't cover
+- **Saved devices** — remember a connection (host/serial + credentials) so
+  you can reconnect in one click instead of retyping everything
 
 Auto-refreshes on a timer (default 20s, adjustable) and after every action,
 so the GUI never drifts out of sync with what's actually on the switch.
+
+## Screenshots
+
+| Dashboard | VLANs | Ports |
+|---|---|---|
+| ![Dashboard](screenshots/dashboard.png) | ![VLANs](screenshots/vlans.png) | ![Ports](screenshots/ports.png) |
+
+| Interfaces / IP | Security / Users | Terminal |
+|---|---|---|
+| ![Interfaces](screenshots/interfaces.png) | ![Security / Users](screenshots/users.png) | ![Terminal](screenshots/terminal.png) |
 
 ## Requirements
 
@@ -43,8 +55,15 @@ python3 main.py
 ```
 
 You'll get a connection dialog on launch — pick Telnet or Serial, enter the
-line password and enable secret, and it connects. Nothing is cached to
-disk; credentials only live in memory for the session.
+line password and enable secret, and it connects. Check "Save this device
+for next time" to remember it; next launch, the dialog opens with your
+saved devices listed above the connection form, one click to reconnect.
+
+Saved devices (including passwords, by design — see below) live in
+`~/.config/cisco3560-gui/devices.json`, chmod'd `0600`. That file is local
+only; it's never part of this repo and nothing here should ever commit it.
+If you'd rather not have credentials on disk at all, just leave "Save this
+device" unchecked and type them in each time.
 
 ## Why Telnet and not SSH
 
